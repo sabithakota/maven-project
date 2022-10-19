@@ -1,0 +1,45 @@
+pipeline
+{
+    agent any 
+    stages{
+        stage("git clone"){
+            steps{
+                git 'https://github.com/selenium-saikrishna/maven.git'
+            }
+        }
+        stage("build"){
+            steps{
+                sh 'mvn package'
+            }
+        }
+        stage("deployement"){
+            steps{
+                sshagent(['923c5dee-0ff2-4980-8260-670d8ff65566']) {
+                sh 'scp /var/lib/jenkins/workspace/pipeline_job/webapp/target/webapp.war ubuntu@172.31.28.160:/var/lib/tomcat9/webapps/qa.war'
+            }
+            }
+        }
+        stage("testing"){
+            steps{
+               git 'https://github.com/selenium-saikrishna/FunctionalTesting.git'
+               sh 'echo "Testing passed"'
+            }
+        }
+    }  
+    post
+    {
+        success
+        {
+            input message: 'Waiting for approvals from Delivery manager', submitter: 'prasad'
+            sshagent(['76fc8e03-3273-4868-8526-dba9124cb2de'])
+            {
+            sh 'scp /var/lib/jenkins/workspace/pipeline_job/webapp/target/webapp.war ubuntu@172.31.29.182:/var/lib/tomcat9/webapps/prod.war'
+            }
+        }
+        failure
+        {
+            mail bcc: '', body: 'jenkins job fails', cc: '', from: '', replyTo: '', subject: '', to: 'prasad'
+        }
+    }
+    
+}
